@@ -16,3 +16,70 @@
 
 # in the client -> UDP Transmission Re-transferred Packets: ...
 
+import socket
+import hashlib
+import struct
+import time
+
+HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
+
+
+# TCP connection
+tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# the server only gets the ports, how to know the host?
+tcp_socket.bind((HOST, PORT))
+
+# listen 
+tcp_socket.listen()
+
+# accept the connection
+client_socket, client_addr = tcp_socket.accept()
+
+reassamble = ''
+while True:
+    # message is 1033 bytes + 8 bytes = 1041 bytes
+    message = client_socket.recv(1041)
+    if message == b'':
+        client_socket.close()
+        break 
+
+
+    t = struct.unpack("d", message[:8])[0]
+    passing_time = time.time() - t
+    # get the time information
+    #print(passing_time)
+    # get the payload.
+    payload = message[8:]
+    #print(payload)
+    reassamble = reassamble + str(payload)
+
+    
+
+#print(a,end='')
+f = open("demofile3.txt", "w")
+#f.write(bytes(reassamble,encoding = 'utf-8'))
+f.write(reassamble)
+f.close()
+
+tcp_file_raw  = open("demofile3.txt",'rb')
+tcp_str = tcp_file_raw.read()
+
+# need to encode, md5 throws error otherwise
+#tcp_check = tcp_str.encode('latin-1')
+print(hashlib.md5(tcp_str).hexdigest())
+
+# split the payload into chunks.
+
+# checksum using pseudo header + tcp header + tcp body
+
+# Source Port
+# Destination Port
+# Sequence Number
+# Acknoledgement Number
+# Data Offset
+# Flags
+# Window
+# Checksum (initial value)
+# Urgent pointer
