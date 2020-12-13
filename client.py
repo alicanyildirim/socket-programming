@@ -30,8 +30,6 @@ PORT = 65432        # The port used by the server
 
 
 # the file we will send via tcp
-tcp_file_raw  = open(tcp_file,'r')
-tcp_str = tcp_file_raw.read()
 #print(sys.getsizeof(tcp_str))    
 #print(len(tcp_str))    
 
@@ -47,9 +45,16 @@ tcp_socket.connect((HOST,PORT))
 
 #print(sys.getsizeof(sliced))    
 # split data into chunks.
-chunks = [tcp_str[i:i+1000] for i in range(0, len(tcp_str), 1000)]
 #print(len(chunks))    
-for chunk in chunks:
+#no need to close this
+with open(tcp_file, "rb") as chunks:
+    chunk = chunks.read(1000)
+    while chunk != b'':
+        message = struct.pack("d", time.time()) + chunk
+        tcp_socket.sendall(message)
+        time.sleep(0.1)
+        chunk = chunks.read(1000)
+
     #print(f"Sending {i}")
     #print("a")
     
@@ -57,18 +62,18 @@ for chunk in chunks:
     #print(sys.getsizeof(chunk.encode('utf-8')))    
     
     # need to make it byte 
-    byte_chunk = chunk.encode('utf-8')
     
     # using 'd' -> double will store 8 bytes.
     # send the time with the data to the server.
-    message = struct.pack("d", time.time()) + byte_chunk
-    tcp_socket.send(message)
-    #time.sleep(0.1)
+    # I send bytes.
 
 
 # need to encode, md5 throws error otherwise
-tcp_check = tcp_str.encode('utf-8')
-print(hashlib.md5(tcp_check).hexdigest())
+#tcp_check = tcp_str.encode('utf-8')
+
+tcp_file_raw  = open(tcp_file,'rb')
+tcp_str = tcp_file_raw.read()
+print(hashlib.md5(tcp_str).hexdigest())
 
 
 

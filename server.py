@@ -37,7 +37,8 @@ tcp_socket.listen()
 # accept the connection
 client_socket, client_addr = tcp_socket.accept()
 
-reassamble = ''
+reassamble = []
+f = open("demofile3.txt", "wb+")
 while True:
     # message is 1033 bytes + 8 bytes = 1041 bytes
     message = client_socket.recv(1041)
@@ -52,15 +53,17 @@ while True:
     #print(passing_time)
     # get the payload.
     payload = message[8:]
-    #print(payload)
-    reassamble = reassamble + str(payload)
+    reassamble.append(payload)
 
-    
+length = len(reassamble)
+with open("tcp_out.txt", "wb") as output_file:
+	for i in range(length):
+		output_file.write(reassamble[i])
+# now the reassamble is a str
 
+#print(type(reassamble))
 #print(a,end='')
-f = open("demofile3.txt", "w")
-#f.write(bytes(reassamble,encoding = 'utf-8'))
-f.write(reassamble)
+#f.write(bytes(reassamble, encoding='latin-1').decode())
 f.close()
 
 tcp_file_raw  = open("demofile3.txt",'rb')
