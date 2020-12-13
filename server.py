@@ -38,7 +38,6 @@ tcp_socket.listen()
 client_socket, client_addr = tcp_socket.accept()
 
 reassamble = []
-f = open("demofile3.txt", "wb+")
 while True:
     # message is 1033 bytes + 8 bytes = 1041 bytes
     message = client_socket.recv(1041)
@@ -61,14 +60,10 @@ with open("tcp_out.txt", "wb") as output_file:
 		output_file.write(reassamble[i])
 # now the reassamble is a str
 
-#print(type(reassamble))
-#print(a,end='')
-#f.write(bytes(reassamble, encoding='latin-1').decode())
-f.close()
 
-tcp_file_raw  = open("demofile3.txt",'rb')
+tcp_file_raw  = open("tcp_out.txt",'rb')
 tcp_str = tcp_file_raw.read()
-
+tcp_file_raw.close()
 # need to encode, md5 throws error otherwise
 #tcp_check = tcp_str.encode('latin-1')
 print(hashlib.md5(tcp_str).hexdigest())
