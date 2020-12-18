@@ -178,6 +178,8 @@ def run_udp_server(udp_listen_port,output):
     udp_socket.bind(('', int(udp_listen_port)))
     # listen 
     reassamble = []
+    elapsed_times = []
+    communication_start = []
     # need a try except block for timeout..
     try:
         while True:
@@ -185,7 +187,22 @@ def run_udp_server(udp_listen_port,output):
             udp_socket.settimeout(3)
             # take 1000 bytes at most.
             message, _ = udp_socket.recvfrom(1000) 
-            reassamble.append(message)
+
+            # get the time information
+            start_time = struct.unpack("d", message[:8])[0]
+            passing_time = time.time()*1000.0 - start_time
+            
+            elapsed_times.append(passing_time)
+            
+            if(len(communication_start) == 0):
+                # get the start time of the transaction.
+                communication_start.append(start_time)
+
+            # get the payload.
+            payload = message[8:]
+
+            reassamble.append(payload)
+
             #print(message)
     except socket.timeout:
         udp_socket.close()
@@ -200,6 +217,15 @@ def run_udp_server(udp_listen_port,output):
     udp_str = udp_file_raw.read()
     print(hashlib.md5(udp_str).hexdigest())
     udp_file_raw.close()
+    #UDP Packets Average Transmission Time: ... ms
+    average_udp_time = sum(elapsed_times) / len(elapsed_times) 
+    print(f"UDP Packets Average Transmission Time: {average_udp_time:.4} ms" )
+    
+    #UDP Communication Total Transmission Time: ... ms
+    total_time = time.time()*1000.0-communication_start[0]
+    print(f"UDP Communication Total Transmission Time: {total_time:.4} ms" )
+
+    # TODO UDP Transmission Re-transferred Packets:  ...
 
 
 run_udp_server(udp_listen_port,output)

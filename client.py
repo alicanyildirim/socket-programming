@@ -255,14 +255,18 @@ def run_udp_client(udp_file,server_ip,udp_listen_for_server,udp_sender_for_clien
     # sent every bit of chunk to the server.
     for chunk in chunks:
         # need to make it byte, hashes work on bytes not chars they say.
-        byte_chunk = bytearray(chunk)
+        byte_chunk = bytearray(chunk) # 957 bytes
         
+        start_time = time.time() * 1000.0 # seconds to ms. 24 bytes.
         # message is ready to go to the server.
-        message = byte_chunk
-
+        message = struct.pack("d", start_time) + byte_chunk #this gives 941, math doesn't add up.
+        
+        #print(sys.getsizeof(message))
+        
         #sent the chunk to the server.
         udp_socket.sendto(message,(server_ip,int(udp_sender_for_client)))
-        time.sleep(0.01)
+        # I need to sleep here or the connection closes.
+        time.sleep(0.005)
     
     #close the file.
     udp_file_raw.close()

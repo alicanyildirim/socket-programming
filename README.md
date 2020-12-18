@@ -16,3 +16,9 @@ I have created 4 files with the head -c XM < /dev/urandom to test, however I got
     4. sent the pack to the Server.                     * if not send ACK0
     5. start timer, wait for ACK                    
     7. if ACK0, retransmit, else move to the next.
+
+    After working on it for a while I couldn't wrap my head around it, because it became complex for me.
+    What I did was to implement udp incrementally like in the slides and the video I reffered to.
+
+
+    I should also note that the transmission times include the timeout value since it is also a part of the communication.
