@@ -17,6 +17,7 @@
 # in the client -> UDP Transmission Re-transferred Packets: ...
 
 from sys import argv
+import sys
 import socket
 import hashlib
 import struct
@@ -25,12 +26,11 @@ import time
 udp_listen_port = argv[1] 
 tcp_listen_port = argv[2]
 
-
-def run_tcp_server(output,HOST,PORT):
+def run_tcp_server(PORT,output):
     # TCP connection
     tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # the server only gets the ports, how to know the host?
-    tcp_socket.bind((HOST, PORT))
+    tcp_socket.bind(('127.0.0.1', int(PORT)))
     # listen 
     tcp_socket.listen()
     # accept the connection
@@ -38,47 +38,55 @@ def run_tcp_server(output,HOST,PORT):
     reassamble = []
     elapsed_times = []
     start_times = []
-    while True:
-        # message is 1033 bytes + 8 bytes = 1041 bytes
-        message = client_socket.recv(1041)
-        if message == b'':
-            #TCP Packets Average Transmission Time: ... ms
-            average_tcp_time = sum(elapsed_times) / len(elapsed_times) 
-            print(f"TCP Packets Average Transmission Time: {average_tcp_time:.4} ms" )
+    tcp_socket.timeout(2)
+    client_socket.timeout(2)
+    try:
+        while True:
+            # message is 1033 bytes + 8 bytes = 1041 bytes
+            message = client_socket.recv(1041)
+            if message == b'':
+                #TCP Packets Average Transmission Time: ... ms
+                average_tcp_time = sum(elapsed_times) / len(elapsed_times) 
+                print(f"TCP Packets Average Transmission Time: {average_tcp_time:.4} ms" )
+                
+                #TCP Communication Total Transmission Time: ... ms
+                total_time = (time.time()-start_times[0])*100
+                print(f"TCP Communication Total Transmission Time: {total_time:.4} ms" )
+                
+                
+                break 
+
+
+            # get the time information
+            t = struct.unpack("d", message[:8])[0]
+            passing_time = time.time() - t
+            start_times.append(t)
+            #from sec to msec
+            elapsed_times.append(passing_time*100)
             
-            #TCP Communication Total Transmission Time: ... ms
-            total_time = (time.time()-start_times[0])*100
-            print(f"TCP Communication Total Transmission Time: {total_time:.4} ms" )
-            client_socket.close()
-            break 
-
-
-        # get the time information
-        t = struct.unpack("d", message[:8])[0]
-        passing_time = time.time() - t
-        start_times.append(t)
-        #from sec to msec
-        elapsed_times.append(passing_time*100)
+            # get the payload.
+            payload = message[8:]
+            reassamble.append(payload)
         
-        # get the payload.
-        payload = message[8:]
-        reassamble.append(payload)
+    except socket.timeout:
+        # Closing the connections
+        client_socket.close()
+        
+        tcp_socket.close()
+            
+    
     length = len(reassamble)
     with open(output, "wb") as output_file:
         for i in range(length):
             output_file.write(reassamble[i])
-    
-    
     # need to encode, md5 throws error otherwise
     tcp_file_raw  = open(output,'rb')
     tcp_str = tcp_file_raw.read()
-    print(hashlib.md5(tcp_str).hexdigest())
+    file_checksum = hashlib.md5(tcp_str).hexdigest()
+    print(f"TCP Newly generated file's checksum: {file_checksum}")
     tcp_file_raw.close()
-    #tcp_check = tcp_str.encode('latin-1')
 
-    # split the payload into chunks.
-output = "tcp_out1.txt"
-#run_tcp_server(output,HOST,PORT)
+
 
 #run_tcp_server("out_lorem.txt",HOST,PORT)
 #run_tcp_server("out1.bin",HOST,PORT)
@@ -89,71 +97,6 @@ output = "tcp_out1.txt"
 
 
 
-# checksum using pseudo header + tcp header + tcp body
-
-# Source Port
-# Destination Port
-# Sequence Number
-# Acknoledgement Number
-# Data Offset
-# Flags
-# Window
-# Checksum (initial value)
-# Urgent pointer
-'''
-def run_udp_server(output,HOST,PORT):
-    # TCP connection
-    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # the server only gets the ports, how to know the host?
-    tcp_socket.bind((HOST, PORT))
-    # listen 
-    tcp_socket.listen()
-    # accept the connection
-    client_socket, _ = tcp_socket.accept()
-    reassamble = []
-    elapsed_times = []
-    start_times = []
-    while True:
-        # message is 1033 bytes + 8 bytes = 1041 bytes
-        message = client_socket.recv(1041)
-        if message == b'':
-            #TCP Packets Average Transmission Time: ... ms
-            average_tcp_time = sum(elapsed_times) / len(elapsed_times) 
-            print(f"TCP Packets Average Transmission Time: {average_tcp_time:.4} ms" )
-            
-            #TCP Communication Total Transmission Time: ... ms
-            total_time = (time.time()-start_times[0])*100
-            print(f"TCP Communication Total Transmission Time: {total_time:.4} ms" )
-            client_socket.close()
-            break 
-
-
-        # get the time information
-        t = struct.unpack("d", message[:8])[0]
-        passing_time = time.time() - t
-        start_times.append(t)
-        #from sec to msec
-        elapsed_times.append(passing_time*100)
-        
-        # get the payload.
-        payload = message[8:]
-        reassamble.append(payload)
-    length = len(reassamble)
-    with open(output, "wb") as output_file:
-        for i in range(length):
-            output_file.write(reassamble[i])
-    
-    
-    # need to encode, md5 throws error otherwise
-    tcp_file_raw  = open(output,'rb')
-    tcp_str = tcp_file_raw.read()
-    print(hashlib.md5(tcp_str).hexdigest())
-    tcp_file_raw.close()
-    #tcp_check = tcp_str.encode('latin-1')
-
-    # split the payload into chunks.
-output = "tcp_out1.txt"
-'''
 #run_tcp_server(output,HOST,PORT)
 
 #run_tcp_server("out_lorem.txt",HOST,PORT)
@@ -166,7 +109,6 @@ output = "tcp_out1.txt"
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
 PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
 
-output = "udp_out1.txt"
 # run server with -> server.py 65432 65432
 def run_udp_server(udp_listen_port,output):
     # UDP connection
@@ -197,8 +139,8 @@ def run_udp_server(udp_listen_port,output):
     # need a try except block for timeout..
     try:
         while True:
-            # need to set the timeout to now it is finished. Set it to 3. no particular reason
-            udp_socket.settimeout(3)
+            # need to set the timeout to now it is finished. Set it to 2. no particular reason
+            udp_socket.settimeout(2)
             # take 1000 bytes at most.
             message, addr = udp_socket.recvfrom(1000) 
             #print(message)
@@ -289,7 +231,8 @@ def run_udp_server(udp_listen_port,output):
 
     udp_file_raw  = open(output,'rb')
     udp_str = udp_file_raw.read()
-    print(hashlib.md5(udp_str).hexdigest())
+    file_checksum = hashlib.md5(udp_str).hexdigest()
+    print(f"UDP newly generated file's checksum: {file_checksum}")
     udp_file_raw.close()
 
 
@@ -307,7 +250,13 @@ def run_udp_server(udp_listen_port,output):
     total_time = time.time()*1000.0-communication_start[0]
     print(f"UDP Communication Total Transmission Time: {total_time:.4} ms" )
 
-    # TODO UDP Transmission Re-transferred Packets:  ...
 
 
-run_udp_server(udp_listen_port,output)
+
+
+
+output_tcp = "transfer_file_TCP.txt"
+run_tcp_server(tcp_listen_port,output_tcp)
+
+output_udp = "transfer_file_UDP.txt"
+#run_udp_server(udp_listen_port,output_udp)
