@@ -244,30 +244,82 @@ def run_udp_client(udp_file,server_ip,udp_listen_for_server,udp_sender_for_clien
 
 
     
-    # create streaming socket
-    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     # establish udp connection with the server
     # needs to be tuple apparently
     # py takes it as a string so type casting is needed.
     # host -> str, port -> int 
-    udp_socket.connect(('',int(udp_sender_for_client)))
     
+    # this sends the chunks to the server
+    # create streaming socket
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #udp_socket.connect(('',int(udp_sender_for_client)))
+    # listens for ACKs from the server
+    #listen_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #listen_server.bind(('',int(udp_sender_for_client)))
+    #listen_server.settimeout(3)
+
+    #listen_server.bind((server_ip,int(udp_listen_for_server)))
+
+    #retransmisson count of the packets
+    retransmisson = 0
     # sent every bit of chunk to the server.
     for chunk in chunks:
+        # flag to check if there is ACK to process
+        flag = False
         # need to make it byte, hashes work on bytes not chars they say.
         byte_chunk = bytearray(chunk) # 957 bytes
-        
+                    
+        checksum = hashlib.md5(byte_chunk).digest() # in byte format.
+        #print(checksum)
         start_time = time.time() * 1000.0 # seconds to ms. 24 bytes.
-        # message is ready to go to the server.
-        message = struct.pack("d", start_time) + byte_chunk #this gives 941, math doesn't add up.
+        message = struct.pack("d", start_time) + struct.pack("32s",checksum) + byte_chunk #this gives 973, math doesn't add up.
         
         #print(sys.getsizeof(message))
+        while not flag:
+            
+            # message is ready to go to the server.
+            #sent the encapsulated message to the server.
+            udp_socket.sendto(message,(server_ip,int(udp_listen_for_server))) #This is true.
+            #try to listen for the ACK
+            # stop and wait for response here.
+            try:
+                time.sleep(0.0001)
+                ack_all, _ = udp_socket.recvfrom(1000)
+            except socket.timeout:
+                #finito
+                print("Timeout")
+            else:
+                #print(ack_all)
+                ack_checksum = struct.unpack("32s", ack_all[0:32])[0]
+                ack = ack_all[32:]
+                #print(ack)
+                #control_ack = b'1'
+                control_ack_checksum = hashlib.md5(ack).digest()
+                #print(ack_checksum.hex())
+                #print(control_ack_checksum.hex())
+                #print(control_ack_checksum.hex() == ack_checksum.hex()[:32])
+                if(ack_checksum.hex()[:32] == control_ack_checksum.hex()):
+                    if(b'1' == ack):
+                        print("YES")
+                        #recieved ACK1 
+                        # Go to the next chunk to deliver.
+                        flag = True
+                    else:
+                        #Negative ACK recieved. send it again.
+                        retransmisson += 1
+                        udp_socket.sendto(message,(server_ip,int(udp_listen_for_server))) #This is true.
+                    #print(ack)
+                else:
+                    # ACK is corrupted.
+                    # send this chunk again.
+                    retransmisson += 1
+                    udp_socket.sendto(message,(server_ip,int(udp_listen_for_server))) #This is true.
+            # I need to sleep here or the connection closes.        
+            # time.sleep(0.005)
         
-        #sent the chunk to the server.
-        udp_socket.sendto(message,(server_ip,int(udp_sender_for_client)))
-        # I need to sleep here or the connection closes.
-        time.sleep(0.005)
     
+    # UDP Transmission Re-transferred Packets:  ...
+    print(f"UDP Transmission Re-transferred Packets: {retransmisson}" )
     #close the file.
     udp_file_raw.close()
     
@@ -281,3 +333,4 @@ udp_file_raw  = open(udp_file_original,'rb')
 udp_str = udp_file_raw.read()
 checksum = hashlib.md5(udp_str).hexdigest()
 print(checksum)
+

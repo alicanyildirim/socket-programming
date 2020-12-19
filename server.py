@@ -170,40 +170,102 @@ output = "udp_out1.txt"
 # run server with -> server.py 65432 65432
 def run_udp_server(udp_listen_port,output):
     # UDP connection
-    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     # the server only gets the ports, how to know the host?
     # host address: '' represents INADDR_ANY, which is used to bind to all interfaces
     # py takes it as a string so type casting is needed.
-    print("Here")
+
+
+    #create two sockets one listens, other one sends, hope this works..
+
+    # this one listens for the actual message.   
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(('', int(udp_listen_port)))
-    # listen 
+    #udp_socket.connect(('',int(udp_sender_for_client)))
+
+    # this one sends the ACK.
+    # I need to broadcast.
+    #response_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #response_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    #response_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    #response_socket.bind(('', int(udp_listen_port)))
+
     reassamble = []
     elapsed_times = []
     communication_start = []
+    initial = 0 # if this is 0 than get the filename and the ip address.
+
     # need a try except block for timeout..
     try:
         while True:
             # need to set the timeout to now it is finished. Set it to 3. no particular reason
             udp_socket.settimeout(3)
             # take 1000 bytes at most.
-            message, _ = udp_socket.recvfrom(1000) 
+            message, addr = udp_socket.recvfrom(1000) 
+            #print(message)
 
             # get the time information
             start_time = struct.unpack("d", message[:8])[0]
-            passing_time = time.time()*1000.0 - start_time
             
-            elapsed_times.append(passing_time)
+            #coming_checksum = struct.unpack("32s", message[8:40])[0] #this somehow gives unpack requires a buffer of 32 bytes
+            # so this is a workaround for it
+            remaining_pck = message[8:]
+            coming_checksum = remaining_pck[:32]
+
             
-            if(len(communication_start) == 0):
-                # get the start time of the transaction.
-                communication_start.append(start_time)
+
+            #print(checksum.hex())
+            
 
             # get the payload.
-            payload = message[8:]
+            payload = remaining_pck[32:]
+            #print(f"Payload: {payload}")
+            # calculate the checksum of what you get from client 
+            new_checksum = hashlib.md5(payload).digest()
+            #need to get the first 32 bit of coming_checksum, it is acting weird.
+            if(new_checksum.hex()== coming_checksum.hex()[:32]):
+                #ip_address = payload[40:55] # get the ip address which is 64 bytes at most.
+                #file_name = payload[55:] # get the file name which is the rest of the payload.                
+                #print(ip_address)
+                #print(file_name)
+                #break
+                if(len(communication_start) == 0 and initial == 0):
+                    # First need to get the file name, and the ip address.
+                    
+                    
+                   # initial += 1                    
+                    
+                    # get the start time of the transaction.
+                    communication_start.append(start_time)
+                
+                # calculate the passing time, add it to the array.
+                passing_time = time.time()*1000.0 - start_time
+                elapsed_times.append(passing_time)
+                # add the data 
+                reassamble.append(payload)
+                # send ACK
+                ack = b'1'
+                #print(f"ACK: {ack}")
+                ack_checksum = hashlib.md5(ack).digest()
+                response = struct.pack("32s",ack_checksum) + ack
+                #print(response)
+                #response = ack_checksum + ack
+                # since server don't know the ip, broadcasting is necessary
+                # (I was about to first get the ip from the client, luckly found this way.)
+                udp_socket.sendto(response,addr) 
+            else:
+                # send NACK
+                ack = b'0'
+                #print(f"ACK: {ack}")
+                ack_checksum = hashlib.md5(ack).digest()
+                response = struct.pack("32s",ack_checksum) + ack
+                #print(response)
+                #response = ack_checksum + ack
+                # since server don't know the ip, broadcasting is necessary
+                # (I was about to first get the ip from the client, luckly found this way.)
+                udp_socket.sendto(response,addr) 
+                print("a")
 
-            reassamble.append(payload)
-
-            #print(message)
+            #print(payload)
     except socket.timeout:
         udp_socket.close()
     
@@ -213,10 +275,19 @@ def run_udp_server(udp_listen_port,output):
         for i in range(length):
             output_file.write(reassamble[i])
     
+
     udp_file_raw  = open(output,'rb')
     udp_str = udp_file_raw.read()
     print(hashlib.md5(udp_str).hexdigest())
     udp_file_raw.close()
+
+
+
+
+
+
+    #PRINT 
+
     #UDP Packets Average Transmission Time: ... ms
     average_udp_time = sum(elapsed_times) / len(elapsed_times) 
     print(f"UDP Packets Average Transmission Time: {average_udp_time:.4} ms" )

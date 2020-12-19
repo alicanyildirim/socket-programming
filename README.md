@@ -22,3 +22,4 @@ I have created 4 files with the head -c XM < /dev/urandom to test, however I got
 
 
     I should also note that the transmission times include the timeout value since it is also a part of the communication.
+    Poor understanding of the recvfrom funct and the port I need to use cost me a lot of time. I haven't been using the address I should get from the recvfrom. 
