@@ -263,17 +263,18 @@ def run_udp_client(udp_file,server_ip,udp_listen_for_server,udp_sender_for_clien
     #retransmisson count of the packets
     retransmisson = 0
     # sent every bit of chunk to the server.
+    sequence = 0
     for chunk in chunks:
         # flag to check if there is ACK to process
         flag = False
         # need to make it byte, hashes work on bytes not chars they say.
         byte_chunk = bytearray(chunk) # 957 bytes
-                    
-        checksum = hashlib.md5(byte_chunk).digest() # in byte format.
-        #print(checksum)
         start_time = time.time() * 1000.0 # seconds to ms. 24 bytes.
-        message = struct.pack("d", start_time) + struct.pack("32s",checksum) + byte_chunk #this gives 973, math doesn't add up.
-        
+
+        checksum = hashlib.md5(byte_chunk).digest() # in byte format.
+        header =  struct.pack("d", start_time) + struct.pack("32s",checksum) + struct.pack("i", sequence)
+        #print(checksum)
+        message = header + byte_chunk #this gives 977, math doesn't add up.
         #print(sys.getsizeof(message))
         while not flag:
             
@@ -286,7 +287,8 @@ def run_udp_client(udp_file,server_ip,udp_listen_for_server,udp_sender_for_clien
                 time.sleep(0.0001)
                 ack_all, _ = udp_socket.recvfrom(1000)
             except socket.timeout:
-                #finito
+                #the ACK never came :(
+                
                 print("Timeout")
             else:
                 #print(ack_all)
@@ -300,10 +302,11 @@ def run_udp_client(udp_file,server_ip,udp_listen_for_server,udp_sender_for_clien
                 #print(control_ack_checksum.hex() == ack_checksum.hex()[:32])
                 if(ack_checksum.hex()[:32] == control_ack_checksum.hex()):
                     if(b'1' == ack):
-                        print("YES")
+                        #print("YES")
                         #recieved ACK1 
                         # Go to the next chunk to deliver.
                         flag = True
+                        sequence += 1
                     else:
                         #Negative ACK recieved. send it again.
                         retransmisson += 1
@@ -311,7 +314,7 @@ def run_udp_client(udp_file,server_ip,udp_listen_for_server,udp_sender_for_clien
                     #print(ack)
                 else:
                     # ACK is corrupted.
-                    # send this chunk again.
+                    # can't just send this chunk again. possible duplicate.
                     retransmisson += 1
                     udp_socket.sendto(message,(server_ip,int(udp_listen_for_server))) #This is true.
             # I need to sleep here or the connection closes.        

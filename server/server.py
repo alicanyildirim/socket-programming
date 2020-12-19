@@ -193,7 +193,7 @@ def run_udp_server(udp_listen_port,output):
     elapsed_times = []
     communication_start = []
     initial = 0 # if this is 0 than get the filename and the ip address.
-
+    sequences = [] # sequences so far accepted from client.
     # need a try except block for timeout..
     try:
         while True:
@@ -210,14 +210,14 @@ def run_udp_server(udp_listen_port,output):
             # so this is a workaround for it
             remaining_pck = message[8:]
             coming_checksum = remaining_pck[:32]
-
-            
-
+            sequence = remaining_pck[32:36]
+            #print(int.from_bytes(sequence, "little"))
+            int_sequence = int.from_bytes(sequence, "little")
             #print(checksum.hex())
             
 
             # get the payload.
-            payload = remaining_pck[32:]
+            payload = remaining_pck[36:]
             #print(f"Payload: {payload}")
             # calculate the checksum of what you get from client 
             new_checksum = hashlib.md5(payload).digest()
@@ -237,11 +237,22 @@ def run_udp_server(udp_listen_port,output):
                     # get the start time of the transaction.
                     communication_start.append(start_time)
                 
+                
+
                 # calculate the passing time, add it to the array.
                 passing_time = time.time()*1000.0 - start_time
                 elapsed_times.append(passing_time)
-                # add the data 
-                reassamble.append(payload)
+
+
+
+                # server will not accept duplicates so we add the sequence number and check if we recieved that before.
+                if(int_sequence not in sequences):
+                    sequences.append(int_sequence)
+                    # add the data 
+                    reassamble.append(payload)
+
+
+
                 # send ACK
                 ack = b'1'
                 #print(f"ACK: {ack}")
@@ -271,7 +282,7 @@ def run_udp_server(udp_listen_port,output):
     
 
     length = len(reassamble)
-    with open(output, "wb") as output_file:
+    with open('server/'+output, "wb") as output_file:
         for i in range(length):
             output_file.write(reassamble[i])
     
