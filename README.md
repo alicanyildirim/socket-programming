@@ -1,5 +1,17 @@
+## HOW TO RUN
+
+there are two folders, client and server, server.py will write the files two server folder. The execution is as follows:
+python3 server/server.py  65144 65145
+python3 client/client.py 127.0.0.1 65144 65145 65456 65352
+
+The filenames can be changed in the client.py 242th line for tcp, 247th line for udp; 
+                             in the server.py 255th line for tcp, 259th line for udp.
+
+
 I have started to do this homework in 12.12.2020. I decided to start with the TCP, since UDP requires RDT on top of it, i thought it would be easier to do after implementing TCP. 
 
+I never encountered this, but since I start the udp process after the tcp, according to the delays or timeouts, the pipes may be broken if the client for udp starts firstly and waits for a second.
+## TCP
 I spent most of my time debugging the transferred file check. My program sends it as a binary but when I write it to the file, decoding and encoding method did not seem to work. I think my wrting was the issue, by adding "b" tag, I was able to solve the issue. I had the issue of getting corrupted chars when sending with tcp. 
 I got '�����' these types of corrupt readings from TCP. These defects wasted good chunk of my time. But then I uncommented my time.sleep()
 then those defects were gone. Running diff on two files gave finally no differences and the checksums matched. I have looked to socket.settimeout, but decided to implemented it later if I had time, because it did not work when adding intuitively.
@@ -21,5 +33,9 @@ I have created 4 files with the head -c XM < /dev/urandom to test, however I got
     What I did was to implement udp incrementally like in the slides and the video I reffered to.
 
 
-    I should also note that the transmission times include the timeout value since it is also a part of the communication.
     Poor understanding of the recvfrom funct and the port I need to use cost me a lot of time. I haven't been using the address I should get from the recvfrom. 
+
+    I also had a bug while getting the commandline arguments, but PORT gave connection refused so I waste a bunch of time there.
+    I have finished and started to test it in 19.12.2020 at 20:15 o'clock.    
+
+I have learnt how to implement RDT over UDP and I got hands on experience with socket programming.

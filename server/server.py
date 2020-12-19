@@ -30,7 +30,7 @@ def run_tcp_server(PORT,output):
     # TCP connection
     tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # the server only gets the ports, how to know the host?
-    tcp_socket.bind(('127.0.0.1', int(PORT)))
+    tcp_socket.bind(('', int(PORT)))
     # listen 
     tcp_socket.listen()
     # accept the connection
@@ -38,8 +38,6 @@ def run_tcp_server(PORT,output):
     reassamble = []
     elapsed_times = []
     start_times = []
-    tcp_socket.timeout(2)
-    client_socket.timeout(2)
     try:
         while True:
             # message is 1033 bytes + 8 bytes = 1041 bytes
@@ -76,11 +74,11 @@ def run_tcp_server(PORT,output):
             
     
     length = len(reassamble)
-    with open(output, "wb") as output_file:
+    with open('server/' + output, "wb") as output_file:
         for i in range(length):
             output_file.write(reassamble[i])
     # need to encode, md5 throws error otherwise
-    tcp_file_raw  = open(output,'rb')
+    tcp_file_raw  = open('server/' + output,'rb')
     tcp_str = tcp_file_raw.read()
     file_checksum = hashlib.md5(tcp_str).hexdigest()
     print(f"TCP Newly generated file's checksum: {file_checksum}")
@@ -107,7 +105,7 @@ def run_tcp_server(PORT,output):
 
 
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
-PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
+        # Port to listen on (non-privileged ports are > 1023)
 
 # run server with -> server.py 65432 65432
 def run_udp_server(udp_listen_port,output):
@@ -139,8 +137,8 @@ def run_udp_server(udp_listen_port,output):
     # need a try except block for timeout..
     try:
         while True:
-            # need to set the timeout to now it is finished. Set it to 2. no particular reason
-            udp_socket.settimeout(2)
+            # need to set the timeout to know it is finished. Set it to 1.
+            udp_socket.settimeout(1)
             # take 1000 bytes at most.
             message, addr = udp_socket.recvfrom(1000) 
             #print(message)
@@ -251,12 +249,13 @@ def run_udp_server(udp_listen_port,output):
     print(f"UDP Communication Total Transmission Time: {total_time:.4} ms" )
 
 
-
-
-
+#output_tcp = "test3.bin"
+#output_udp = "test1.bin"
 
 output_tcp = "transfer_file_TCP.txt"
+#run_tcp_server(tcp_listen_port,output_tcp)
 run_tcp_server(tcp_listen_port,output_tcp)
 
 output_udp = "transfer_file_UDP.txt"
-#run_udp_server(udp_listen_port,output_udp)
+run_udp_server(udp_listen_port,output_udp)
+

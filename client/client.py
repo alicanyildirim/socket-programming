@@ -42,9 +42,9 @@ import sys
 #Get the arguments from command line.
 server_ip = argv[1] 
 udp_listen_for_server = argv[2]
-tcp_listen_for_server = argv[2]
-udp_sender_for_client = argv[3]
-tcp_sender_for_client = argv[4]
+tcp_listen_for_server = argv[3]
+udp_sender_for_client = argv[4]
+tcp_sender_for_client = argv[5]
 
 
 def run_tcp_client(tcp_file,server_ip,PORT):
@@ -57,11 +57,11 @@ def run_tcp_client(tcp_file,server_ip,PORT):
 
     # create streaming socket
     tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+    
     # establish tcp connection with the server
-    tcp_socket.settimeout(1)
+    #tcp_socket.settimeout(1)
     # needs to be tuple apparently
-    tcp_socket.connect(('',int(PORT)))
+    tcp_socket.connect((server_ip,int(PORT)))
     #print(sys.getsizeof(sliced))    
     # split data into chunks.
     #print(len(chunks))    
@@ -80,8 +80,9 @@ def run_tcp_client(tcp_file,server_ip,PORT):
         # using 'd' -> double will store 8 bytes.
         # send the time with the data to the server.
         message = struct.pack("d", time.time()) + byte_chunk
-        tcp_socket.send(message)
-        time.sleep(0.001)
+        tcp_socket.sendall(message)
+        # this needs to be here or some corruption occurs.
+        time.sleep(0.01)
 
 
     # need to encode, md5 throws error otherwise
@@ -181,8 +182,8 @@ def run_udp_client(udp_file,server_ip,udp_listen_for_server,udp_sender_for_clien
             udp_socket.sendto(message,(server_ip,int(udp_listen_for_server))) #This is true.
             #try to listen for the ACK
             # stop and wait for response here.
+            udp_socket.settimeout(1)
             try:
-                time.sleep(0.0001)
                 ack_all, _ = udp_socket.recvfrom(1000)
             except socket.timeout:
                 #the ACK never came :(
@@ -236,15 +237,15 @@ def run_udp_client(udp_file,server_ip,udp_listen_for_server,udp_sender_for_clien
     udp_file_raw.close()
     
 
-
+#tcp_file_original = "test3.bin"
 
 tcp_file_original = "transfer_file_TCP.txt"
 run_tcp_client(tcp_file_original,server_ip,tcp_listen_for_server)
 
 
-
+#udp_file_original = "test1.bin"
 udp_file_original = "transfer_file_UDP.txt"
-#run_udp_client(udp_file_original,server_ip,udp_listen_for_server,udp_sender_for_client) 
+run_udp_client(udp_file_original,server_ip,udp_listen_for_server,udp_sender_for_client) 
 
 # How I compared the file transmitted.
 '''
